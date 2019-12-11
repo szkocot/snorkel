@@ -810,6 +810,7 @@ class LabelModel(nn.Module):
         L_train: np.ndarray,
         Y_dev: Optional[np.ndarray] = None,
         class_balance: Optional[List[float]] = None,
+        ret_loss = True,
         **kwargs: Any,
     ) -> None:
         """Train label model.
@@ -891,6 +892,8 @@ class LabelModel(nn.Module):
 
         # Train the model
         metrics_hist = {}  # The most recently seen value for all metrics
+        if ret_loss:
+            loss_log = []
         for epoch in range(start_iteration, self.train_config.n_epochs):
             self.running_loss = 0.0
             self.running_examples = 0
@@ -900,6 +903,8 @@ class LabelModel(nn.Module):
 
             # Forward pass to calculate the average loss per example
             loss = self._loss_mu(l2=self.train_config.l2)
+            if ret_loss:
+                loss_log.append(loss)
             if torch.isnan(loss):
                 msg = "Loss is NaN. Consider reducing learning rate."
                 raise Exception(msg)
@@ -928,6 +933,9 @@ class LabelModel(nn.Module):
         # Print confusion matrix if applicable
         if self.config.verbose:  # pragma: no cover
             logging.info("Finished Training")
+        
+        if ret_loss:
+            return torch.stack(loss_log).detach().numpy()
 
     def save(self, destination: str) -> None:
         """Save label model.
